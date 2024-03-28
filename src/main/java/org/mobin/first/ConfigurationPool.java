@@ -21,4 +21,12 @@ public class ConfigurationPool {
         return new User();
     }
 
+
+
+    @Bean
+    @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+    Person person() {
+        return new Person();
+    }
+
 }
