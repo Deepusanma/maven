@@ -23,8 +23,30 @@ jobs:
 
       - name: Build with Maven
         run: mvn -B clean package
-      - name: Test
-        run: mvn --batch-mode -Dmaven.test.failure.ignore=true test
+      - name: Run Tests
+        id: run-tests
+        run: mvn test
+
+      - name: Auto-approve Pull Request
+        if: ${{ github.event_name == 'pull_request' && steps.run-tests.outcome == 'success' }}
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews \
+            -d '{"event":"APPROVE"}'
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+
+      - name: Post Build Success Status
+        if: ${{ steps.run-tests.outcome == 'success' }}
+        run: echo "Build and tests passed, pull request approved."
+
+      - name: Post Build Failure Status
+        if: ${{ steps.run-tests.outcome != 'success' }}
+        run: echo "Build or tests failed, please review."
+
 
       - name: Archive JAR File
         uses: actions/upload-artifact@v2
